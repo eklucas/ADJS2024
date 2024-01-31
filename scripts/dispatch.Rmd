@@ -1,0 +1,130 @@
+---
+title: "Columbia Dispatch"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+Columbia Police Dispatch:
+<https://www.como.gov/CMS/911dispatch/police.php>
+
+-   Downloaded 1/29/2024 8:43 a.m.
+
+-   1/1/2019 to 1/29/2024 (This is what we requested, but we actually
+    only got: 1/29/2023 to 1/29/2024)
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+Load the data
+
+```{r}
+dispatch <- read_csv("data/como_dispatch.csv")
+```
+
+Get to know your data: have a routine that you execute every time you
+open up a new dataset.\
+Three questions I always ask:
+
+1.  How many rows? 83,190 rows
+
+2.  What is one row? 1 row = 1 call that resulted in a dispatch (we
+    think, though there are some duplicates we need to ask about)
+
+3.  What is in every column...
+
+Assessing the data using `count()`
+
+```{r}
+# Are there any incidents with the exact same date, time and address?
+dispatch %>% 
+  group_by(CallDateTime, Address) %>% 
+  summarise(n = n()) %>% 
+  filter(n > 1)
+# There are 50 uniqe date-time / address combinations with more than one record.
+
+# Another way to look at this uses the `count()` function to replace the `group_by()` and `summarise(n = n())`:
+dispatch %>% 
+  count(CallDateTime, Address) %>% 
+  filter(n > 1)
+# the results are exactly the same as above.
+
+# Take a look at one example:
+dispatch %>% 
+  filter(CallDateTime == "10/8/2023 2:08:54 PM")
+# these four rows all have the same info except different incident numbers. different tickets? 
+
+# Does InNum have any duplicates? 
+dispatch %>% 
+  count(InNum) %>% 
+  arrange(desc(n))
+# Yes, take a look at one example: 
+
+dispatch %>% 
+  filter(InNum == "2023029401") 
+# These appear to be exact duplicates.
+```
+
+There are exact duplicates! - call the city
+
+Let's say we learned that exact duplicates are mistakes and should be
+removed:
+```{r}
+# The `distinct()` function shows distinct rows:
+dispatch %>% 
+  distinct()
+# 20 records fewer
+
+# Remove those 20 records permanently:
+dispatch <- dispatch %>% 
+  distinct()
+```
+
+Assess every column:
+
+```{r}
+dispatch %>% 
+  count(InNum) %>% 
+  arrange(desc(n))
+# Still some duplicates
+
+dispatch %>% 
+  count(ExtNatureDisplayName)
+# lots of values here, some are hard to distinguish.
+
+dispatch %>% 
+  count(PolArea)
+# These are useful if we find a map of them: https://www.como.gov/wp-content/uploads/2022/01/Beat-map-2.pdf
+
+dispatch %>% 
+  count(DOW)
+# clean, and incidents are pretty evenly distributed (except for Sunday?)
+```
+
+We can't really assess the CallDateTime because it's a date stored as text. We must convert it to a true date; to do this cleaning, we'll create a new column with the dates using the `mutate()` function and a date conversion function from the package `lubridate`:
+```{r}
+# first test your conversion to make sure it worked
+dispatch %>% 
+  mutate(new_date = mdy_hms(CallDateTime)) %>% 
+  select(CallDateTime, new_date)
+
+# next overwrite your `dispatch` variable so it has the new column
+dispatch <- dispatch %>% 
+  mutate(new_date = mdy_hms(CallDateTime))
+```
+
+What's the date range of our data?
+
+```{r}
+range(dispatch$new_date)
+```
+
+Other ways to work with true dates:
+
+```{r}
+dispatch %>% 
+  count(month(new_date))
+```

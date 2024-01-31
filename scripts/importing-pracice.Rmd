@@ -1,0 +1,54 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+Using read_csv, let's talk about functions. Pull up the documentation for a function by running `?function_name`
+
+```{r}
+?read_csv
+```
+
+The documentation will show up in the bottom right panel.
+
+There are several functions in this grouping: scroll down to `read_csv`
+
+The arguments are listed below it. Any argument that isn't followed by a `=` is required. Everything that has a default setting is optional; only use it if you don't want to use the default.
+
+Messing with column names:
+
+```{r}
+# make it so that R doesn't read the first row as a header row:
+read_csv("data/como_dispatch.csv", col_names = FALSE)
+
+# give R a list of headers for your data:
+read_csv("data/como_dispatch.csv", 
+         col_names = c("col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8"))
+
+# give R a list of headers and skip the first row (which you might do if the headers were really bad):
+read_csv("data/como_dispatch.csv", 
+         col_names = c("col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8"),
+         skip = 1)
+```
+
+Data types
+
+```{r}
+# specify a column type for each column in a string (each character represents one column, in order):
+read_csv("data/como_dispatch.csv", col_types = "cTcccccc")
+
+# make it so that every column imports as a "character" column:
+read_csv("data/como_dispatch.csv", col_types = cols(.default = "c"))
+
+# here's another way to do that based off some internet research:
+read_csv("data/como_dispatch.csv", col_types = cols(.default = col_character()))
+
+# specify a data type for just one column (call it by name):
+read_csv("data/como_dispatch.csv", col_types = cols(InNum = "c"))
+
+
+```
