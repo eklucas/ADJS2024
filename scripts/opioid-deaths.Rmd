@@ -1,0 +1,58 @@
+---
+title: "Opioid deaths"
+output: 
+---
+
+Data from CDC WONDER: 
+https://wonder.cdc.gov/controller/saved/D77/D377F996
+Group by state, year
+1999-2020 (Multiple Cause of Death Final)
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+Load the data
+```{r}
+opioid_deaths <- read_delim("data/opioid-deaths-state-year.txt", delim="\t")
+opioid_deaths <- read_tsv("data/opioid-deaths-state-year.txt")
+```
+
+Remove the notes: 
+```{r}
+notes <- opioid_deaths %>% 
+  filter(!is.na(Notes)) %>% 
+  select(Notes)
+
+opioid_deaths <- opioid_deaths %>% 
+  filter(is.na(Notes)) %>% 
+  select(-Notes)
+```
+
+Transform numbers
+```{r}
+opioid_deaths %>% 
+  count(Deaths) %>% 
+  arrange(desc(Deaths))
+```
+Look at the "Suppressed" values:
+```{r}
+opioid_deaths %>% 
+  filter(Deaths=="Suppressed")
+```
+Create a numeric column for Deaths: 
+```{r}
+opioid_deaths %>% 
+  mutate(num_deaths = parse_number(Deaths)) %>% 
+  arrange(desc(Deaths))
+
+opioid_deaths <- opioid_deaths %>% 
+  mutate(num_deaths = parse_number(Deaths))
+```
+
+Clean the column names
+```{r}
+opioid_deaths <- clean_names(opioid_deaths)
+```
+
