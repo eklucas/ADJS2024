@@ -1,0 +1,36 @@
+---
+title: "WNBA analysis"
+output: 
+---
+
+Salary data: HerHoopStats (2024 salary, 2023 stats)
+Team rosters: ESPN 
+Downloaded in January
+
+```{r}
+library(tidyverse)
+```
+
+Load our two tables: 
+```{r}
+wnba_salaries <- read_csv("data/wnba_salaries.csv")
+wnba_teams <- read_csv("data/wnba_teams.csv")
+```
+
+Practice joins
+```{r}
+anti_join(wnba_salaries, wnba_teams, by = c("name" = "player_name"))
+
+# Isabelle Harrison & Lou Lopez Senechal not on team rosters (but have salaries?)
+
+anti_join(wnba_teams, wnba_salaries, by = c("player_name" = "name"))
+
+# AD Durr is on a team (Dream) but doesn't have a salary
+```
+Combine the tables: 
+```{r}
+full_join(wnba_teams, wnba_salaries, by = c("player_name" = "name"))
+
+wnba_teams %>% full_join(wnba_salaries, by = c("player_name"="name"))
+```
+
