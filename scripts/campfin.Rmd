@@ -1,0 +1,68 @@
+---
+title: "campaign finance"
+output: 
+---
+
+FEC bulk data URL: https://www.fec.gov/data/browse-data/?tab=bulk-data
+Data from the 2021-2022 election cycle
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+transactions <- read_csv("data/transactions.csv")
+transaction_types <- read_csv("data/transaction_types.csv")
+candidates <- read_csv("data/candidates.csv")
+```
+
+What transaction types are we working with? 
+```{r}
+transactions %>% 
+  count(transaction_tp)
+```
+
+Join to transaction_types
+Test first
+```{r}
+transaction_types %>% 
+  count(transaction_tp) %>% 
+  filter(n > 1)
+
+# no duplicates
+```
+
+Left join
+```{r}
+transactions %>% 
+  left_join(transaction_types, by = "transaction_tp") %>% 
+  filter(is.na(transaction_desc))
+# no missing values
+
+transactions %>% 
+  left_join(transaction_types, by = "transaction_tp") %>% 
+  count(transaction_tp, transaction_desc)
+
+# optional step is to create a new table from the join:
+transactions2 <- transactions %>% 
+  left_join(transaction_types, by = "transaction_tp")
+```
+
+How much money was spent for each transaction type? 
+```{r}
+transactions %>% 
+  left_join(transaction_types, by = "transaction_tp") %>% 
+  group_by(transaction_desc) %>% 
+  summarise(total_amt = sum(transaction_amt), n = n()) %>% 
+  arrange(desc(total_amt))
+```
+
+Which candidates are in our data? 
+```{r}
+transactions %>% 
+  count(cand_id) %>% 
+  arrange(desc(n)) %>% 
+  left_join(candidates, by = "cand_id")
+```
+
