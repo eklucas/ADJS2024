@@ -3,21 +3,21 @@ title: "WNBA analysis"
 output: 
 ---
 
-Salary data: HerHoopStats (2024 salary, 2023 stats)
-Team rosters: ESPN 
-Downloaded in January
+Salary data: HerHoopStats (2024 salary, 2023 stats) Team rosters: ESPN Downloaded in January
 
 ```{r}
 library(tidyverse)
 ```
 
-Load our two tables: 
+Load our two tables:
+
 ```{r}
 wnba_salaries <- read_csv("data/wnba_salaries.csv")
 wnba_teams <- read_csv("data/wnba_teams.csv")
 ```
 
 Practice joins
+
 ```{r}
 anti_join(wnba_salaries, wnba_teams, by = c("name" = "player_name"))
 
@@ -27,10 +27,23 @@ anti_join(wnba_teams, wnba_salaries, by = c("player_name" = "name"))
 
 # AD Durr is on a team (Dream) but doesn't have a salary
 ```
-Combine the tables: 
+
+Combine the tables:
+
 ```{r}
+###LIZ: note that these two lines of code produce the same results: 
+
 full_join(wnba_teams, wnba_salaries, by = c("player_name" = "name"))
 
 wnba_teams %>% full_join(wnba_salaries, by = c("player_name"="name"))
 ```
 
+Homework, due 2/19:
+
+1.  Answer these questions
+    1.  Which team has the highest average salary?
+    2.  What team attempts the most field goals in a game?
+    3.  Which team is the best rebounding team in the league?
+    4.  What percentage of all players come from countries other than the US?
+    5.  Which college produces the best players?
+2.  Ask and answer three of your own questions.
