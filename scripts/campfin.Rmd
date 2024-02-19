@@ -15,6 +15,7 @@ library(lubridate)
 transactions <- read_csv("data/transactions.csv")
 transaction_types <- read_csv("data/transaction_types.csv")
 candidates <- read_csv("data/candidates.csv")
+committees <- read_csv("data/committees.csv")
 ```
 
 What transaction types are we working with? 
@@ -35,11 +36,17 @@ transaction_types %>%
 
 Left join
 ```{r}
+# first check: are the results = rows in main table? 
+transactions %>% 
+  left_join(transaction_types, by = "transaction_tp")
+
+# second check: are there any rows where the joined columns are NA?
 transactions %>% 
   left_join(transaction_types, by = "transaction_tp") %>% 
   filter(is.na(transaction_desc))
 # no missing values
 
+# check the code and desc matchups
 transactions %>% 
   left_join(transaction_types, by = "transaction_tp") %>% 
   count(transaction_tp, transaction_desc)
@@ -64,5 +71,56 @@ transactions %>%
   count(cand_id) %>% 
   arrange(desc(n)) %>% 
   left_join(candidates, by = "cand_id")
+```
+
+Which candidate had the most money spent on them in independent expenditures?
+```{r}
+transactions %>% 
+  filter(transaction_tp == "24A" | transaction_tp == "24E") %>%
+  left_join(candidates, by = "cand_id") %>% 
+  group_by(cand_name) %>% 
+  summarise(total_amt = sum(transaction_amt)) %>% 
+  arrange(desc(total_amt))
+```
+```{r}
+# look at opposing
+transactions %>% 
+  filter(transaction_tp == "24A") %>%
+  left_join(candidates, by = "cand_id") %>% 
+  group_by(cand_name) %>% 
+  summarise(total_amt = sum(transaction_amt)) %>% 
+  arrange(desc(total_amt))
+
+# look at advocating
+transactions %>% 
+  filter(transaction_tp == "24E") %>%
+  left_join(candidates, by = "cand_id") %>% 
+  group_by(cand_name) %>% 
+  summarise(total_amt = sum(transaction_amt)) %>% 
+  arrange(desc(total_amt))
+```
+
+Can we make this code more efficient so we're not repeating ourselves?
+(The DRY principle: Don't Repeat Yourself)
+The function `pivot_wider()` can help us here: 
+```{r}
+transactions %>% 
+  filter(transaction_tp %in% c("24A", "24E")) %>% 
+  left_join(candidates, by = "cand_id") %>% 
+  group_by(cand_name, transaction_tp) %>% 
+  summarise(total_amt = sum(transaction_amt)) %>% 
+  pivot_wider(names_from = transaction_tp, values_from = total_amt) %>% 
+  mutate(total = sum(`24A`,`24E`, na.rm=T), opposing_pct = `24A`/total) %>% 
+  arrange(desc(opposing_pct))
+```
+
+Who are the committees spending this independent expenditure money? 
+```{r}
+transactions %>% 
+  filter(transaction_tp %in% c("24A", "24E")) %>% 
+  left_join(committees, by = "cmte_id") %>% 
+  group_by(cmte_nm) %>% 
+  summarise(total = sum(transaction_amt)) %>% 
+  arrange(desc(total))
 ```
 
