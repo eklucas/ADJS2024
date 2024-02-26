@@ -1,0 +1,46 @@
+---
+title: "First API"
+output: html_notebook
+---
+
+API Endpoint: https://data.cityofnewyork.us/resource/h9gi-nx95.csv
+Main page: https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95/about_data
+
+The New York City Open Data portal (like many local and state government open data portals) is run by Socrata; they provide "API endpoints" for all their datasets in either JSON or CSV format. We prefer CSV, though there are R packages that allow you to work with JSON (JavaScript Object Notation) and convert it into columns and rows for analysis. 
+
+Socrata gives you a warning that you can only access 1,000 rows at a time, but the RSocrata package bypasses that issue and imports the full dataset.
+
+You can access the API Endpoint (above) by going to the main page and clicking Export: you can download the CSV file or access the API endpoint. There are benefits to both that we discussed in class. We also downloaded the data dictionary file on the main page into our data folders (it's in Excel format). 
+
+
+```{r}
+# install.packages("RSocrata")
+# install.packages("readxl")
+
+library(RSocrata)
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+crashes <- read.socrata("https://data.cityofnewyork.us/resource/h9gi-nx95.csv")
+```
+
+Socrata also lets you use query-like parameters when making data requests. You can read more about this in the [API documentation](https://dev.socrata.com/foundry/data.cityofnewyork.us/h9gi-nx95). 
+As an example, we could only request data where in the `borough` column we find the word `MANHATTAN`:
+```{r}
+manhattan_crashes <- read.socrata("https://data.cityofnewyork.us/resource/h9gi-nx95.csv?borough=MANHATTAN")
+```
+
+Use the readxl package to import that data dictionary Excel file. It has arguments similar to read_csv(); it includes an argument for which sheet you want to import from the Excel file (here our main data dict is in the second tab), and you can skip rows (this tab has an extra header row that we don't need):
+```{r}
+# load data dict from file:
+datadict <- read_excel("data/MVCollisionsDataDictionary_20190813_ERD.xlsx", sheet=2, skip=1)
+```
+
+Save the file:
+```{r}
+# here you can save a copy of your request as a csv, if you want to work on a static file going forward. You can also do this after you've cleaned up and/or transformed the data.
+write_csv(crashes, "data/nyc_crashes.csv")
+```
+
