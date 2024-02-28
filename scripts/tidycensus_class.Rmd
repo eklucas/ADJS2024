@@ -1,0 +1,117 @@
+---
+title: "tidycensus"
+output: html_notebook
+---
+
+###Preparation: 
+Make sure you have an [activated API key from the census](https://api.census.gov/data/key_signup.html). 
+Install the `usethis` package (`install.packages("usethis")`) and then run `usethis::edit_r_environ()` in the console below.
+This will open up a system file called `.REnviron`. In it, type this line:
+CENSUS_API_KEY=
+Then paste your API key, that long string of letters and numbers in your email from the Census Bureau. You do not need to use quotes.
+For example:
+CENSUS_API_KEY=a2392kf12oifo12n3kj
+(That's not a real key). 
+Save and close the .REnviron file
+Restart R by going to Session > Restart R
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+```
+
+Here's the documentation for [tidycensus](https://walker-data.com/tidycensus/articles/basic-usage.html#geography-in-tidycensus-1)
+
+Kyle Walker's documentation is good, it's worth consulting frequently. In particular check out:
+
+-   [Basic usage](https://walker-data.com/tidycensus/articles/basic-usage.html)
+
+-   [Margins of error](https://walker-data.com/tidycensus/articles/margins-of-error.html)
+
+In the basic usage section Kyle has some example code near the top to pull median age by state from the 2020 decennial census, using the function `get_decennial()`: 
+
+```{r}
+age20 <- get_decennial(geography = "state", 
+                       variables = "P13_001N", 
+                       year = 2020,
+                       sumfile = "dhc")
+```
+
+Most of the time we'll use the American Community Survey or the Population Estimates databases from the Census Bureau, using `get_acs()` and `get_estimates()` respectively. 
+
+Our first ACS request will be for the population of counties in Missouri. Note the default product `get_acs()` pulls is the 5-yr ACS data, which is the best product for small geographies. In our first request, we get all 114 counties in Missouri plus St Louis City, which is it's own entity and doesn't have a county. We're also specifying which year; 2021 is the most recent year available for 5-yr data:
+```{r}
+county_pop <- get_acs(geography = "county",
+                      variables = "B01001_001",
+                      state = "MO",
+                      year = 2022)
+
+county_pop %>% arrange(desc(estimate))
+```
+
+You can also specifically pull 1-yr ACS data by adding the `survey` argument (see below); notice that we don't get all the counties back, just the ones with at least 65,000 people. That's the cutoff for 1-yr data, you can't get information for any geographies with fewer than 65,000 people: 
+```{r}
+county_pop2 <- get_acs(geography = "county",
+                      variables = "B01001_001",
+                      state = "MO",
+                      year = 2022,
+                      survey = "acs1")
+
+county_pop2 %>% arrange(desc(estimate))
+```
+
+How did we know to use "B01001_001"? By searching all the variables for the ACS detailed tables: 
+```{r}
+v22 <- load_variables(2022, "acs5", cache = TRUE)
+```
+
+In this table `V22` the `name` column is the variable name and `label` describes the variable. `concept` is the table name and `geography` is the smallest available geography. See more about [geographies in the Basic Usage section](https://walker-data.com/tidycensus/articles/basic-usage.html#geography-in-tidycensus) of the documentation. 
+
+Use the `distinct()` function to see the unique tables in ACS 5-yr 2022 dataset:
+```{r}
+v22 %>% distinct(concept)
+# there are almost 1200 tables... it's a lot to look through.
+```
+
+Try searching this table for keywords based on topics you're interested in using a tidyverse function called `str_detect()` that tells you whether a particular piece of text exists in a string (in this case the column `concept`):
+```{r}
+# Try "plumbing":
+v22 %>% filter(str_detect(concept, "Plumbing")) %>% distinct(concept)
+# 6 tables have the word "Plumbing". We'll home in on "Tenure by Plumbing Facilities"
+
+# You can then find all the variables in this table: 
+v22 %>% 
+  filter(concept == "Tenure by Plumbing Facilities")
+# There are seven variables in this table: "B25049_001", "B25049_002", "B25049_003", etc. The table id is B25049. 
+
+# You can also find table ids by using the search on data.census.gov. 
+
+# To find all the variables if you know a particular table id: 
+v22 %>% filter(str_detect(name, "B25049"))
+```
+
+Pull all the variables from "Tenure by Plumbing Facilities" for Missouri:
+```{r}
+mo_plumbing1 <- get_acs(geography = "state",
+                          variables = c("B25049_001", "B25049_002", "B25049_003", "B25049_004", "B25049_005", "B25049_006", "B25049_007"),
+                          state = "MO", 
+                          year = 2022)
+```
+
+Our final table will be easier to read if we label the variable names. Write in name assignments, and this time request all states instead of just MO:
+```{r}
+mo_plumbing2 <- get_acs(geography = "state", 
+              variables = c(total = "B25049_001", 
+                            owner = "B25049_002", 
+                            owner_complete = "B25049_003", 
+                            owner_lacking = "B25049_004", 
+                            renter = "B25049_005", 
+                            renter_complete = "B25049_006", 
+                            renter_lacking = "B25049_007"),
+              year = 2022)
+
+## alternately, you could join to the variables table to pull in "label", though those names are messier than I'd like:
+
+mo_plumbing1 %>% 
+  inner_join(v22, by = c("variable" = "name"))
+```
