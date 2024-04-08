@@ -1,0 +1,74 @@
+---
+title: "Billboard scrape"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(janitor)
+```
+
+```{r}
+url <- "https://www.billboard.com/charts/hot-100/"
+
+html <- read_html(url)
+```
+
+Things we tried:
+```{r}
+html %>% 
+  html_element("ul.o-chart-results-list-row") %>% 
+  html_elements("li") %>% 
+  html_text()
+
+html %>% 
+  html_elements("li.o-chart-results-list__item") %>% 
+  html_elements("span")
+
+test <- html %>% 
+  html_elements("li.o-chart-results-list__item") %>% html_text()
+
+gsub("\t|\n", "", test)
+
+
+# Trying to use the h3 tag to get the song title
+html %>% html_elements("h3#title-of-a-story.c-title") %>% html_text2()
+```
+
+What we got to work:
+```{r}
+# Two tags up in the hierarchy from h3 is this li (list item) tag which seems to capture the whole row. Running it through the html_text2() function produces a string. Note that we're using html_element instead of html_elements just to test.
+first_row <- html %>% html_element("li.lrv-u-width-100p") %>% html_text2() %>% 
+  # a little research and we found this "string split" function, which takes a string:
+  str_split("\n")
+
+# This takes a character vector and turns it into a data frame row:
+do.call(rbind.data.frame, first_row)
+
+# Now that we have some working code for one row, we can use html_elements and loop through all the rows:
+
+## LOOP
+
+master_data <- NULL
+
+elements <- html %>% html_elements("li.lrv-u-width-100p") %>% html_text2()
+
+# note that we are excluding every other row by subsetting elements using [] and a logical vector of c(TRUE,FALSE)
+for (e in elements[c(TRUE,FALSE)]){
+  e <- str_split(e, "\n")
+  master_data <- append(master_data, e)
+}
+
+# This didn't work inside of the loop
+df <- do.call(rbind.data.frame, master_data)
+
+final_data <- df %>% 
+  select(1:5) %>% 
+  rename("song"=1, "artist"=2, "last_week"=3, "peak_pos"=4, "weeks_on_chart"=5) %>% 
+# we didn't scrape the current rank, but that's ok because the songs are in order, so we'll just add a column of numbers in sequential order
+  mutate(rank = seq(1:100)) %>% 
+# reorder the columns so the current rank is first:
+  select(6,1:5)
+```
+

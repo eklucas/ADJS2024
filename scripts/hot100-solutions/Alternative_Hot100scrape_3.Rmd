@@ -1,0 +1,50 @@
+---
+title: "Hot 100 Scrape"
+output: html_notebook
+---
+
+```{r}
+library(rvest)
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+url <- "https://www.billboard.com/charts/hot-100/"
+
+html <- read_html(url)
+```
+
+```{r}
+html %>% 
+  html_elements("h3#title-of-a-story") %>% 
+  html_text2()
+# use the hashtag to identify the id of a tag
+
+html %>% 
+  html_elements("div.chart-results-list-header") %>% 
+  html_text2()
+# use the period to identify the class of a tag (note that you can use part of the class rather than the full class)
+
+giant_list <- html %>% 
+  html_elements("div.o-chart-results-list-row-container") %>% 
+  html_text2() %>% 
+  str_split("\n")
+
+# sometimes it helps to try different tags to see if what you get is a little cleaner / easier to use. here i just went to the first tag nested within the div tag above:
+html %>% 
+  html_elements("ul.o-chart-results-list-row") %>% 
+  html_text2() %>% 
+
+# be creative when reformatting / cleaning data
+hot100 <- html %>% 
+  html_elements("ul.o-chart-results-list-row") %>% 
+  html_text2() %>% 
+  str_replace_all("\n", "`") %>% 
+  str_replace_all(" NEW`NEW", "") %>% 
+  str_replace_all(" RE- ENTRY`RE- ENTRY", "") %>% 
+  tibble() %>% 
+  separate(1, sep="`", into=c("rank", "title", "artist", "last_week", "peak_pos", "weeks_on_chart", NA, NA, NA))
+
+```
+
