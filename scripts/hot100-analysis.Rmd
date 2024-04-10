@@ -1,0 +1,143 @@
+---
+title: "Hot100 analysis"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+hot100 <- read_csv("data/hot-100-current.csv")
+```
+
+## ASSESSMENT
+What is one row? -- one song x one week
+What's in every column? -- 
+```{r}
+# chart_week
+range(hot100$chart_week)
+difftime(as.Date("1958-08-04"),as.Date("2024-04-06"),"week")
+
+# current_week
+range(hot100$current_week)
+
+hot100 %>% filter(is.na(current_week))
+
+# title
+hot100 %>% count(title) %>% arrange(desc(n))
+## song titles are not unique
+hot100 %>% filter(title=="Stay") %>% count(performer)
+
+# performer
+hot100 %>% count(performer) %>% arrange(desc(n))
+
+hot100 %>% filter(str_detect(performer, "Taylor Swift")) %>% count(performer)
+
+hot100 %>% filter(grepl("taylor swift", performer, ignore.case=T)) %>% count(performer)
+
+## some performers are "featured" by others, so names aren't always consistent
+
+range(hot100$last_week, na.rm=T)
+
+## there are both zeroes and NAs (do they mean the same thing?)
+
+hot100 %>% filter(last_week==0 | is.na(last_week)) %>% count(last_week)
+
+## see if there's a year cutoff:
+hot100 %>% filter(last_week==0) %>% count(year(chart_week))
+hot100 %>% filter(is.na(last_week)) %>% count(year(chart_week))
+
+## NAs stop in 2021 and 0s start.
+
+range(hot100$peak_pos)
+# as expected
+
+range(hot100$wks_on_chart)
+# as expected, highest value is 91
+```
+
+
+What are the boundaries of our data?
+Every week since Aug 4, 1958
+
+## QUESTIONS
+
+Which song was on the chart for the longest?
+A: Heat Waves by Glass Animals (91 weeks)
+```{r}
+hot100 %>% 
+  count(performer, title) %>% 
+  arrange(desc(n))
+```
+
+
+Which song was the on the charts for the most consecutive weeks?
+A: Unanswerable without more work...
+```{r}
+hot100 %>% 
+  group_by(performer, title) %>% 
+  summarise(min_week = min(chart_week), max_week = max(chart_week), n = n()) %>% 
+  mutate(difference = difftime(time1=max_week, time2=min_week, units="weeks")+1) %>% 
+  arrange(desc(n))
+
+hot100 %>% 
+  filter(title=="Run Rudolph Run") %>% 
+  arrange(chart_week)
+```
+
+
+When was the first week that TS hit the Charts? 
+A: 2006-09-23, with "Tim McGraw"
+```{r}
+hot100 %>% 
+  filter(str_starts(performer, "Taylor Swift")) %>% 
+  arrange(chart_week)
+```
+
+When was the first time that Mariah Carey was #1? (and was it a Christmas song?)
+A: "Vision of Love" in 1990, Aug 4
+```{r}
+hot100 %>% 
+  filter(str_starts(performer, "Mariah Carey") & current_week==1) %>% 
+  arrange(chart_week)
+```
+
+Which artist has had the most #1 songs as a solo artist?
+A: The Beatles
+```{r}
+hot100 %>% 
+  filter(current_week==1) %>% 
+  group_by(performer) %>% 
+  summarise(n = n_distinct(title)) %>% 
+  arrange(desc(n))
+
+## how many #1 songs has TS had that may or may not feature other artists?
+hot100 %>% 
+  filter(str_starts(performer, "Taylor Swift") & current_week==1) %>% 
+  group_by(performer) %>% 
+  summarise(n = n_distinct(title))
+
+hot100 %>% 
+ filter(str_starts(performer, "Taylor Swift") & current_week==1) %>% 
+  count(title)
+```
+
+Which artist has been featured the most by other artists? 
+A: Drake (as a solo artist)
+```{r}
+feature_data <- hot100 %>% 
+  filter(str_detect(performer, "Featuring"))
+
+feature_data <- feature_data %>% 
+  separate_wider_delim(performer, delim="Featuring", names=c("primary_artist", "featuring_artist"), cols_remove=F)
+
+feature_data %>% 
+  count(featuring_artist) %>% 
+  arrange(desc(n))
+```
+
+Has a song ever left the charts and then come back into the top 10? 
+
+
